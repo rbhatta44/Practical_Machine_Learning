@@ -1,0 +1,82 @@
+# Practical Machine Learning Course Project
+### Ram Bhatta
+### Septemper 4, 2016
+
+##Executive summary
+A large amount of data about personal activity can be collected using devices such as Jawbone Up, Nike FuelBand, and Fitbit. From these data, people can quantify how much of a particular activity they do. However, they rarely quantify how well they do it. In this course project, our goal is to use the data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants and analyse them. This project is focused on building model, using cross validation,  estimation of expected sample error  and reasons for making theose choices.
+
+##Data source
+The training data for this project are available at https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv and the test data are available at https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv. The data for this project come from http://groupware.les.inf.puc-rio.br/har and further information can be found at http://groupware.les.inf.puc-rio.br/har.
+
+##Loading data and appropriate libraries
+```{r}
+train <- read.csv("~/Desktop/coursera/machine_learning/proj/pml-training.csv")
+test <- read.csv("~/Desktop/coursera/machine_learning/proj/pml-testing.csv")
+library(AppliedPredictiveModeling)
+library(caret)
+library(randomForest)
+library(lattice) 
+```
+
+##Data processing
+Let us clean the data by removing NAs and unnecessary columns
+```{r}
+myindex <- c(4, 7:11, 37:49, 60:68, 84:86)
+ml_train <- train[,myindex]
+ml_train$class <- train$classe
+ml_test <- test[,myindex]
+```
+
+## Data partitioning
+Now, let us split the data into two sets: 80% training and 20% test sets. This will help us for performing cross validation on our model.
+```{r}
+set.seed(12345)
+ml_train80 <- createDataPartition(ml_train$class, p = 0.80, list = FALSE)
+train80 <- ml_train[ml_train80,]
+test20 <- ml_train[-ml_train80,]
+```
+
+##Model building
+Let us start with the dicision tree
+```{r}
+DT <- train(
+  class ~., 
+  method = "rpart", 
+  data = train80)
+prediction <- predict(
+  DT, 
+  test20)
+print(confusionMatrix(prediction, test20$class))
+```
+
+Let us now perform Random forest to see if the present accuracy of dicision tree (~55%) can be enhanced.
+
+```{r}
+RF <- randomForest(
+  class ~., 
+  data = train80)
+prediction <- predict(
+  RF, 
+  test20, 
+  type = "class")
+print(confusionMatrix(prediction, test20$class))
+```
+
+##Model assessment
+Comparing the above mentioned models, Random forest appears to be the best model because it gives above 99% accuracy.
+```{r}
+predictionf <- read.table("myprediction", header = TRUE)
+row.names(predictionf) <- predictionf$nn
+predictionf <- predictionf[,2:6]
+predictionf_matrix <- data.matrix(predictionf)
+levelplot(predictionf_matrix[1:ncol(predictionf_matrix),ncol(predictionf_matrix):1], xlab="Actual Class", ylab="Predicted Class")
+```
+
+## Model decision
+Based on the above data analysis and cross-validation of models, we see that the Random Forest algorithm appears to be superior compared to other models. It yields above 99% accuracy and the out-of-sample error is low (~ 0.2%). 
+
+## Applying model on 20 testing sets
+
+```{r}
+print(predict(RF, newdata=test))
+```
